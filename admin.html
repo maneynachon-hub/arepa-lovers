@@ -145,6 +145,27 @@ html,body{height:100%;background:var(--bg);font-family:var(--f);color:var(--text
 .rev-hidden{opacity:.5;background:var(--bg)!important}
 .rev-hidden .revcmt{text-decoration:line-through}
 
+
+.dash-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;padding:14px;margin-bottom:4px}
+.dash-card{border-radius:var(--r16);padding:16px 12px;color:#fff;display:flex;flex-direction:column;align-items:center;gap:6px;min-height:90px;justify-content:center}
+.dash-card .dc-num{font-size:32px;font-weight:900;line-height:1}
+.dash-card .dc-lbl{font-size:11px;font-weight:700;text-align:center;opacity:.9;text-transform:uppercase;letter-spacing:.3px}
+.dash-card .dc-ico{font-size:22px}
+.date-filter{display:flex;align-items:center;gap:8px;padding:0 14px 10px;flex-wrap:wrap}
+.date-filter label{font-size:12px;font-weight:700;color:var(--text3)}
+.date-filter input{padding:7px 10px;border:1.5px solid var(--bg2);border-radius:var(--r12);font-size:13px;font-family:var(--f);background:var(--bg);color:var(--text)}
+.date-filter button{padding:7px 12px;background:var(--bg2);border:none;border-radius:var(--r12);font-size:12px;font-weight:700;cursor:pointer;font-family:var(--f)}
+.rev-hidden{opacity:.5;background:var(--bg)!important}
+.notif-badge{position:fixed;top:60px;right:14px;background:var(--red);color:white;border-radius:50px;padding:10px 18px;font-size:14px;font-weight:800;z-index:999;box-shadow:0 4px 20px rgba(184,16,30,.4);display:none}
+.comanda{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:500;align-items:center;justify-content:center;padding:16px}
+.comanda.open{display:flex}
+.comanda-inner{background:white;border-radius:16px;width:100%;max-width:380px;max-height:90vh;overflow-y:auto}
+.comanda-print{padding:20px}
+.comanda-actions{display:flex;gap:10px;padding:14px 20px;border-top:1px solid var(--bg2)}
+.print-btn{flex:1;background:var(--red);color:white;border:none;border-radius:12px;padding:13px;font-size:15px;font-weight:700;cursor:pointer;font-family:var(--f)}
+.close-cbt{padding:13px 18px;background:var(--bg);border:none;border-radius:12px;font-size:15px;cursor:pointer;font-family:var(--f)}
+@media print{body *{visibility:hidden}.comanda-print,.comanda-print *{visibility:visible}.comanda-print{position:fixed;left:0;top:0;width:80mm}.comanda-actions{display:none}}
+
 </style>
 </head>
 <body>
@@ -192,6 +213,15 @@ html,body{height:100%;background:var(--bg);font-family:var(--f);color:var(--text
   </div>
   <div class="abody">
     <div class="apane on" id="ap-pedidos">
+    <div class="dash-grid">
+      <div class="dash-card" style="background:#1A0E08;grid-column:span 3;cursor:pointer" onclick="fOrd('preparando',this)"><div class="dc-num" id="dash-proceso">0</div><div class="dc-lbl">Ordenes en proceso</div></div>
+      <div class="dash-card" style="background:#6B7280;cursor:pointer" onclick="fOrd('entregado',this)"><div class="dc-ico">&#9989;</div><div class="dc-num" id="dash-completadas">0</div><div class="dc-lbl">Completadas</div></div>
+      <div class="dash-card" style="background:#374151;cursor:pointer" onclick="fOrd('rechazado',this)"><div class="dc-ico">&#128274;</div><div class="dc-num" id="dash-cerradas">0</div><div class="dc-lbl">Cerradas</div></div>
+      <div class="dash-card" style="background:#374151;cursor:pointer" onclick="fOrd('rechazado',this)"><div class="dc-ico">&#10005;</div><div class="dc-num" id="dash-rechazados">0</div><div class="dc-lbl">Rechazados</div></div>
+      <div class="dash-card" style="background:#0D9488;cursor:pointer" onclick="fOrd('pendiente',this)"><div class="dc-ico">&#128276;</div><div class="dc-num" id="dash-pendientes">0</div><div class="dc-lbl">Pendientes</div></div>
+      <div class="dash-card" style="background:#0D9488;grid-column:span 2;cursor:pointer" onclick="fOrd('confirmado',this)"><div class="dc-ico">&#127869;</div><div class="dc-num" id="dash-aceptados">0</div><div class="dc-lbl">Aceptados</div></div>
+    </div>
+    <div class="date-filter"><label>Fecha:</label><input type="date" id="date-filter-input" onchange="filterByDate(this.value)"><button onclick="filterByDate('');document.getElementById('date-filter-input').value=''">Limpiar</button></div>
       <div class="ibox">&#128241; Nuevas ordenes llegan a tu WhatsApp automaticamente</div>
       <div class="orf" id="orf">
         <button class="chip on" onclick="fOrd('all',this)">Todos</button>
@@ -315,432 +345,105 @@ html,body{height:100%;background:var(--bg);font-family:var(--f);color:var(--text
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script>
 
-var _store = {};
+var _store={};
 function lsGet(k){try{return localStorage.getItem(k);}catch(e){return _store[k]||null;}}
 function lsSet(k,v){try{localStorage.setItem(k,v);}catch(e){_store[k]=v;}}
 
 var DB=null,FB_READY=false;
-
 function initFirebase(){
   try{
-    if(typeof firebase==='undefined')return;
+    if(typeof firebase==="undefined")return;
     if(!firebase.apps.length){firebase.initializeApp({apiKey:"AIzaSyA9iOyveMQA1AHH3he3KC_cJGYHCIbAvFs",authDomain:"arepa-smash-lovers.firebaseapp.com",databaseURL:"https://arepa-smash-lovers-default-rtdb.firebaseio.com",projectId:"arepa-smash-lovers",storageBucket:"arepa-smash-lovers.firebasestorage.app",messagingSenderId:"499120113295",appId:"1:499120113295:web:51f66b98a13668d6fcd2fa"});}
     DB=firebase.database();FB_READY=true;
-    listenAll();
+    DB.ref("al_orders").on("value",function(s){
+      var data=s.val(),arr=[];
+      if(data){Object.keys(data).forEach(function(k){var o=data[k];o.fbKey=k;arr.push(o);});}
+      arr.sort(function(a,b){return b.at.localeCompare(a.at);});
+      lsSet("al_o",JSON.stringify(arr));
+      if(document.getElementById("ordlist"))renderOrders();
+      updateDashboard();
+    });
+    DB.ref("al_menu").on("value",function(s){var d=s.val();if(d)lsSet("al_m",JSON.stringify(d));});
+    DB.ref("al_config").on("value",function(s){var d=s.val();if(d)lsSet("al_c",JSON.stringify(d));});
+    DB.ref("al_reviews").on("value",function(s){
+      var data=s.val(),arr=[];
+      if(data){Object.keys(data).forEach(function(k){var r=data[k];r.fbId=k;arr.push(r);});}
+      arr.sort(function(a,b){return b.at.localeCompare(a.at);});
+      lsSet("al_r",JSON.stringify(arr));
+      if(document.getElementById("revlist"))renderAdmRevs();
+    });
   }catch(e){FB_READY=false;}
 }
 
-function listenAll(){
-  if(!FB_READY||!DB)return;
-  DB.ref('al_orders').on('value',function(snap){
-    var data=snap.val(),arr=[];
-    if(data){Object.keys(data).forEach(function(k){var o=data[k];o.fbKey=k;arr.push(o);});arr.sort(function(a,b){return b.at.localeCompare(a.at);});}
-    lsSet('al_o',JSON.stringify(arr));
-    if(document.getElementById('ordlist')&&document.getElementById('ap-pedidos').classList.contains('on'))renderOrders();
-  });
-  DB.ref('al_menu').on('value',function(snap){var d=snap.val();if(d){lsSet('al_m',JSON.stringify(d));}});
-  DB.ref('al_config').on('value',function(snap){var d=snap.val();if(d){lsSet('al_c',JSON.stringify(d));}});
+var K={M:"al_m",O:"al_o",C:"al_c",P:"al_p",R:"al_r"};
+var ordFilt="all",ordDate="",fotoData=null,comboCompDefs=[];
+var CAT_LABELS={combos:"Combos",arepas:"Arepas Especiales",cachapas:"Cachapas",tequenos:"Tequenos",bebidas:"Bebidas",extras:"Extras"};
+var CAT_ORDER=["combos","arepas","cachapas","tequenos","bebidas","extras"];
+var ICONS={arepas:"&#129811;",cachapas:"&#127805;",bebidas:"&#127844;",extras:"&#127839;",combos:"&#127873;",tequenos:"&#129380;"};
+function icon(cat){return ICONS[cat]||"&#127869;";}
+
+function gCfg(){
+  var d=lsGet(K.C);
+  if(d){try{return JSON.parse(d);}catch(e){}}
+  return{minFree:500,shipCost:99,wa:"18095550000",bank:"Banco: BanReservas\nCuenta: 012-345678-9\nTitular: Arepa Lovers SRL",pass:"arepa2024",rateMin:30,schedule:{enabled:false,days:[1,2,3,4,5,6,0],open:"10:00",close:"22:00"}};
 }
-
-function fbKey(id){
-  var orders=gOrders(),i;
-  for(i=0;i<orders.length;i++)if(orders[i].id===id)return orders[i].fbKey||null;
-  return null;
-}
-
-
-var K={M:'al_m',O:'al_o',C:'al_c',P:'al_p',R:'al_r'};
-var ordFilt='all', fotoData=null, comboCompDefs=[];
-var ICONS={arepas:'&#129811;',cachapas:'&#127805;',bebidas:'&#127844;',extras:'&#127839;',combos:'&#127873;'};
-function icon(cat){return ICONS[cat]||'&#127869;';}
-
-function gCfg(){var d=lsGet(K.C);if(d){try{return JSON.parse(d);}catch(e){}}return{minFree:500,shipCost:99,wa:'18095550000',bank:'Banco: BanReservas\nCuenta: 012-345678-9\nTitular: Arepa Lovers SRL',pass:'arepa2024',rateMin:30};}
 function sCfg(c){lsSet(K.C,JSON.stringify(c));if(FB_READY&&DB)DB.ref("al_config").set(c).catch(function(){});}
 
 var DM=[
-  {id:'p1',name:'Arepa Pollo y Queso Gouda',desc:'Pollo desmenuzado con queso Gouda derretido',price:295,cat:'arepas',bs:true,on:true,foto:null,type:'regular'},
-  {id:'p2',name:'Arepa de Pabellon',desc:'Caraotas, carne mechada, tajadas y queso blanco',price:320,cat:'arepas',bs:false,on:true,foto:null,type:'regular'},
-  {id:'p3',name:'Arepa Reina Pepiada',desc:'Pollo con guacamol y mayonesa venezolano',price:285,cat:'arepas',bs:false,on:true,foto:null,type:'regular'},
-  {id:'p4',name:'Arepa de Pernil',desc:'Pernil de cerdo al estilo caraqueno con queso',price:330,cat:'arepas',bs:false,on:true,foto:null,type:'regular'},
-  {id:'p5',name:'Cachapa con Queso de Mano',desc:'Cachapa artesanal con queso de mano premium',price:499,cat:'cachapas',bs:true,on:true,foto:null,type:'regular'},
-  {id:'p6',name:'Cachapa con Queso Rallado',desc:'Cachapa tradicional con queso rallado',price:345,cat:'cachapas',bs:false,on:true,foto:null,type:'regular'},
-  {id:'p7',name:'Jugo Natural',desc:'Papaya mango o lechoza fresca',price:120,cat:'bebidas',bs:false,on:true,foto:null,type:'regular'},
-  {id:'p8',name:'Malta Polar',desc:'La malta venezolana original',price:95,cat:'bebidas',bs:false,on:true,foto:null,type:'regular'},
-  {id:'p9',name:'Papas Fritas',desc:'Crujientes con sal y ajo',price:140,cat:'extras',bs:false,on:true,foto:null,type:'regular'},
-  {id:'c1',name:'Combo Lover',desc:'Tu arepa + bebida al precio especial',price:380,cat:'combos',bs:true,on:true,foto:null,type:'combo',
-    components:[{id:'cp1',label:'Tu arepa',required:true,sourceCategory:'arepas'},{id:'cp2',label:'Tu bebida',required:true,sourceCategory:'bebidas'}]}
+  {id:"p1",name:"Arepa Pollo y Queso Gouda",desc:"Pollo desmenuzado con queso Gouda derretido",price:295,cat:"arepas",bs:true,on:true,foto:null,type:"regular",order:1},
+  {id:"p2",name:"Arepa de Pabellon",desc:"Caraotas, carne mechada, tajadas y queso blanco",price:320,cat:"arepas",bs:false,on:true,foto:null,type:"regular",order:2},
+  {id:"p3",name:"Arepa Reina Pepiada",desc:"Pollo con guacamol y mayonesa venezolano",price:285,cat:"arepas",bs:false,on:true,foto:null,type:"regular",order:3},
+  {id:"p4",name:"Arepa de Pernil",desc:"Pernil de cerdo al estilo caraqueno con queso",price:330,cat:"arepas",bs:false,on:true,foto:null,type:"regular",order:4},
+  {id:"p5",name:"Cachapa con Queso de Mano",desc:"Cachapa artesanal con queso de mano premium",price:499,cat:"cachapas",bs:true,on:true,foto:null,type:"regular",order:1},
+  {id:"p6",name:"Cachapa con Queso Rallado",desc:"Cachapa tradicional con queso rallado",price:345,cat:"cachapas",bs:false,on:true,foto:null,type:"regular",order:2},
+  {id:"p7",name:"Jugo Natural",desc:"Papaya mango o lechoza fresca",price:120,cat:"bebidas",bs:false,on:true,foto:null,type:"regular",order:1},
+  {id:"p8",name:"Malta Polar",desc:"La malta venezolana original",price:95,cat:"bebidas",bs:false,on:true,foto:null,type:"regular",order:2},
+  {id:"p9",name:"Papas Fritas",desc:"Crujientes con sal y ajo",price:140,cat:"extras",bs:false,on:true,foto:null,type:"regular",order:1},
+  {id:"c1",name:"Combo Lover",desc:"Tu arepa + bebida al precio especial",price:380,cat:"combos",bs:true,on:true,foto:null,type:"combo",order:1,
+    components:[{id:"cp1",label:"Tu arepa",required:true,sourceCategory:"arepas"},{id:"cp2",label:"Tu bebida",required:true,sourceCategory:"bebidas"}]}
 ];
 function gMenu(){var d=lsGet(K.M);if(d){try{return JSON.parse(d);}catch(e){}}return DM;}
 function sMenu(m){lsSet(K.M,JSON.stringify(m));if(FB_READY&&DB)DB.ref("al_menu").set(m).catch(function(){});}
 function gOrders(){var d=lsGet(K.O);if(d){try{return JSON.parse(d);}catch(e){}}return[];}
 function sOrders(o){lsSet(K.O,JSON.stringify(o));}
 function gRevs(){var d=lsGet(K.R);if(d){try{return JSON.parse(d);}catch(e){}}return[];}
+function sRevs(r){lsSet(K.R,JSON.stringify(r));}
 
-function SS(id){var ss=document.querySelectorAll('.screen'),i;for(i=0;i<ss.length;i++)ss[i].classList.remove('active');document.getElementById(id).classList.add('active');window.scrollTo(0,0);}
+function SS(id){var ss=document.querySelectorAll(".screen"),i;for(i=0;i<ss.length;i++)ss[i].classList.remove("active");document.getElementById(id).classList.add("active");window.scrollTo(0,0);}
 
+// ========== AUTH ==========
 function chkP(){
-  var cfg=gCfg(),stored=lsGet(K.P)||cfg.pass,v=document.getElementById('ap').value;
-  if(v===stored||v==='arepa2024'){try{sessionStorage.setItem('ala','1');}catch(e){_store['ala']='1';}document.getElementById('ap').value='';document.getElementById('perr').style.display='none';loadAdm();}
-  else document.getElementById('perr').style.display='block';
+  var cfg=gCfg(),stored=lsGet(K.P)||cfg.pass,v=document.getElementById("ap").value;
+  if(v===stored||v==="arepa2024"){
+    try{sessionStorage.setItem("ala","1");}catch(e){_store["ala"]="1";}
+    document.getElementById("ap").value="";
+    document.getElementById("perr").style.display="none";
+    loadAdm();
+  }else{document.getElementById("perr").style.display="block";}
 }
-function loadAdm(){SS('sa');renderOrders();renderRevs();renderAdmMenu();loadCfgP();}
-function aOut(){try{sessionStorage.removeItem('ala');}catch(e){delete _store['ala'];}SS('sl');}
-
-function aTab(t,btn){var tabs=document.querySelectorAll('.atab'),panes=document.querySelectorAll('.apane'),i;for(i=0;i<tabs.length;i++)tabs[i].classList.remove('on');btn.classList.add('on');for(i=0;i<panes.length;i++){panes[i].classList.remove('on');panes[i].classList.add('hidden');}document.getElementById('ap-'+t).classList.remove('hidden');document.getElementById('ap-'+t).classList.add('on');}
-
-function stBg(s){return{pendiente:'#FEF3C7',confirmado:'var(--gbg)',rechazado:'#FEE2E2',preparando:'#E0F2FE',entregado:'var(--bg2)',pendiente_pago:'#EDE9FE'}[s]||'var(--bg2)';}
-function stCl(s){return{pendiente:'#92400E',confirmado:'var(--green)',rechazado:'#991B1B',preparando:'#0369A1',entregado:'var(--text2)',pendiente_pago:'#5B21B6'}[s]||'var(--text2)';}
-function stLbl(s){return{pendiente:'Pendiente',confirmado:'Confirmado',rechazado:'Rechazado',preparando:'Preparando',entregado:'Entregado',pendiente_pago:'Link pago pendiente'}[s]||s;}
-
-function genGeoLink(oid){var orders=gOrders(),ord=null,i,fk;for(i=0;i<orders.length;i++)if(orders[i].id===oid){ord=orders[i];break;}if(!ord)return;var link=prompt('Pega el link de pago Geopagos para el pedido '+oid+' (Total: RD$'+ord.total+'):');if(link&&link.trim()){fk=fbKey(oid);if(FB_READY&&DB&&fk){DB.ref("al_orders/"+fk).update({payLink:link.trim()}).catch(function(){});}else{for(i=0;i<orders.length;i++)if(orders[i].id===oid){orders[i].payLink=link.trim();break;}sOrders(orders);}var msg='Arepa Lovers: Tu pedido '+oid+' listo para pagar.\nLink Geopagos:\n'+link.trim()+'\nTotal: RD$'+ord.total;var tel=ord.tel.replace(/[^0-9]/g,'');window.open('https://wa.me/'+(tel.charAt(0)==='1'?tel:'1809'+tel)+'?text='+encodeURIComponent(msg),'_blank');renderOrders();}}
-
-function renderOrders(){
-  var orders=gOrders(),i,o,date,itxt,j,it,acts,html='';
-  if(ordFilt!=='all'){var f=[];for(i=0;i<orders.length;i++)if(orders[i].status===ordFilt)f.push(orders[i]);orders=f;}
-  var el=document.getElementById('ordlist');
-  if(!orders.length){el.innerHTML='<div style="text-align:center;padding:40px;color:var(--text3)">No hay pedidos aun</div>';return;}
-  for(i=0;i<orders.length;i++){
-    o=orders[i];date=new Date(o.at).toLocaleString('es-DO',{dateStyle:'short',timeStyle:'short'});
-    itxt='';for(j=0;j<o.items.length;j++){it=o.items[j];itxt+=it.name+' x'+it.qty;if(it.selDesc)itxt+=' ('+it.selDesc+')';if(j<o.items.length-1)itxt+=', ';}
-    var gLink=o.gps?'<a href="https://maps.google.com/?q='+o.gps.lat+','+o.gps.lng+'" target="_blank" style="color:var(--red)">GPS</a> - ':'';
-    var plBtn=o.payLink?'<button class="ab av" onclick="window.open(\''+o.payLink+'\',\'_blank\')">Ver link</button>':'';
-    var glBtn=(o.pago==='tarjeta'&&!o.payLink)?'<button class="ab ageo" onclick="genGeoLink(\''+o.id+'\')">Generar link Geopagos</button>':'';
-    acts='';
-    if(o.status==='pendiente'||o.status==='pendiente_pago'){acts=(o.comp?'<button class="ab av" onclick="togCp(\''+o.id+'\')">Ver comprobante</button>':'')+plBtn+glBtn+'<button class="ab ac" onclick="updOrd(\''+o.id+'\',\'confirmado\')">Confirmar</button><button class="ab ar" onclick="updOrd(\''+o.id+'\',\'rechazado\')">Rechazar</button>';}
-    else if(o.status==='confirmado'){acts='<button class="ab apr" onclick="updOrd(\''+o.id+'\',\'preparando\')">Preparando</button>';}
-    else if(o.status==='preparando'){acts='<button class="ab ad" onclick="updOrd(\''+o.id+'\',\'entregado\')">Entregado</button>';}
-    var rb=o.rated?'<span style="font-size:10px;background:var(--gbg);color:var(--green);padding:2px 7px;border-radius:50px;font-weight:700;margin-left:4px">Calificado</span>':'';var comBtn='<button class="ab" style="background:#1A0E08;color:white" onclick="openComanda(\''+o.id+'\')">&#129534; Comanda</button>';
-    acts = comBtn + ' ' + acts;
-    html+='<div class="ocrd" id="oc-'+o.id+'"><div class="otop"><div><div class="oid">'+o.id+' - '+date+'</div><div class="ocl">'+o.cliente+rb+'</div><div class="oaddr">'+gLink+o.tel+'</div></div><div style="text-align:right"><div class="oamt">RD$'+o.total+'</div><div class="ost" style="background:'+stBg(o.status)+';color:'+stCl(o.status)+'">'+stLbl(o.status)+'</div></div></div><div class="oitems">'+itxt+'</div><div class="oaddr">'+o.dir+(o.nota?' - '+o.nota:'')+' - '+(o.pago==='tarjeta'?'Tarjeta Geopagos':'Transferencia')+'</div>'+(o.comp?'<div class="cprev" id="cp-'+o.id+'"><img src="'+o.comp+'"></div>':'')+'<div class="oacts">'+acts+'</div></div>';
-  }
-  el.innerHTML=html;
+function loadAdm(){
+  SS("sa");
+  updateDashboard();
+  renderOrders();
+  renderAdmRevs();
+  renderAdmMenu();
+  loadCfgP();
+  loadScheduleUI();
+  renderStoreBtn();
 }
-function togCp(id){var el=document.getElementById('cp-'+id);if(el)el.style.display=el.style.display==='block'?'none':'block';}
-function updOrd(id,status){var orders=gOrders(),o=null,i,fk;for(i=0;i<orders.length;i++)if(orders[i].id===id){o=orders[i];break;}if(!o)return;fk=fbKey(id);if(FB_READY&&DB&&fk){DB.ref("al_orders/"+fk).update({status:status}).catch(function(){});}else{o.status=status;sOrders(orders);}var msgs={confirmado:'Arepa Lovers: Tu pedido '+id+' fue confirmado!',rechazado:'Arepa Lovers: No pudimos verificar el pago de '+id+'. Contactanos.',preparando:'Arepa Lovers: Tu pedido '+id+' esta siendo preparado. Ya casi!'};if(msgs[status]&&o.tel){var tel=o.tel.replace(/[^0-9]/g,'');window.open('https://wa.me/'+(tel.charAt(0)==='1'?tel:'1809'+tel)+'?text='+encodeURIComponent(msgs[status]),'_blank');}if(status==='entregado'){var cfg=gCfg(),ms=(cfg.rateMin||30)*60*1000;var pending=[];try{pending=JSON.parse(lsGet('al_rp')||'[]');}catch(e){}pending.push({orderId:o.id,tel:o.tel,cliente:o.cliente,sendAt:Date.now()+ms});lsSet('al_rp',JSON.stringify(pending));setTimeout(function(){var msg='Arepa Lovers - Hola '+o.cliente+'! Como estuvo tu pedido '+o.id+'? Tu opinion nos ayuda a mejorar.';var tel2=o.tel.replace(/[^0-9]/g,'');window.open('https://wa.me/'+(tel2.charAt(0)==='1'?tel2:'1809'+tel2)+'?text='+encodeURIComponent(msg),'_blank');},ms);}renderOrders();}
-function fOrd(f,btn){var chips=document.querySelectorAll('#orf .chip'),i;for(i=0;i<chips.length;i++)chips[i].classList.remove('on');btn.classList.add('on');ordFilt=f;renderOrders();}
+function aOut(){try{sessionStorage.removeItem("ala");}catch(e){delete _store["ala"];}SS("sl");}
 
-function calcRating(){var revs=gRevs(),sum=0,dist=[0,0,0,0,0],i;if(!revs.length)return{score:4.85,count:374,dist:[0,0,0,0,374]};for(i=0;i<revs.length;i++){sum+=revs[i].stars;dist[revs[i].stars-1]++;}return{score:Math.round(sum/revs.length*100)/100,count:revs.length,dist:dist};}
-function renderRevs(){var revs=gRevs(),r=calcRating(),i,rev,date,stars,th,html='';document.getElementById('statsc').textContent=r.count>0?r.score.toFixed(2):'-';document.getElementById('statcnt').textContent=r.count.toLocaleString()+' opiniones';document.getElementById('statstars').innerHTML='<span style="color:var(--gold);font-size:22px">&#9733;&#9733;&#9733;&#9733;&#9733;</span>';var total=r.count||1,bh='',v;for(v=5;v>=1;v--){var n=r.dist?(r.dist[v-1]||0):0;bh+='<div class="barrow"><span class="barlbl">'+v+'</span><div class="bartrk"><div class="barfil" style="width:'+Math.round(n/total*100)+'%"></div></div><span class="barcnt">'+n+'</span></div>';}document.getElementById('statbars').innerHTML=bh;var rl=document.getElementById('revlist');if(!revs.length){rl.innerHTML='<div style="text-align:center;padding:30px;color:var(--text3)">Aun no hay calificaciones</div>';return;}for(i=0;i<revs.length;i++){rev=revs[i];date=new Date(rev.at).toLocaleDateString('es-DO');stars='';for(var s=1;s<=5;s++)stars+=s<=rev.stars?'<span style="color:var(--gold)">&#9733;</span>':'<span style="color:var(--bg3)">&#9734;</span>';th='';if(rev.tags&&rev.tags.length){th='<div class="revtags">';for(var t=0;t<rev.tags.length;t++)th+='<span class="revtag">'+rev.tags[t]+'</span>';th+='</div>';}html+='<div class="revi"><div class="revtop"><div><div class="revname">'+rev.cliente+'</div><div style="font-size:12px;color:var(--text3)">Pedido '+rev.orderId+'</div></div><div class="revdate">'+date+'</div></div><div style="font-size:15px;margin-bottom:6px">'+stars+'</div>'+th+(rev.comment?'<div class="revcmt">"'+rev.comment+'"</div>':'')+'</div>';}rl.innerHTML=html;}
-
-function renderAdmMenu(){var menu=gMenu(),html='',i,p,img,ex;for(i=0;i<menu.length;i++){p=menu[i];img=p.foto?('<div class="mrimg"><img src="'+p.foto+'"></div>'):('<div class="mrimg">'+icon(p.cat)+'</div>');ex=p.type==='combo'?'<span style="font-size:10px;background:rgba(184,16,30,.1);color:var(--red);padding:2px 7px;border-radius:50px;font-weight:700">Combo '+(p.components?p.components.length:0)+'</span> ':'';html+='<div class="mrow">'+img+'<div class="mrinf"><div class="mrname">'+p.name+(!p.on?' [oculto]':'')+'</div><div class="mrprice">RD$'+p.price+'</div><div class="mrcat">'+ex+p.cat+(p.bs?' - Best Seller':'')+'</div></div><div class="mrbtns"><button class="ebtn" onclick="openProd(\''+p.id+'\',\''+(p.type||'regular')+'\')">&#9998;</button><button class="dbtn" onclick="delProd(\''+p.id+'\')">&#10005;</button></div></div>';}document.getElementById('admenu').innerHTML=html;}
-
-function openProd(id,type){fotoData=null;comboCompDefs=[];document.getElementById('mfprev').innerHTML='<div style="font-size:28px">&#128247;</div><div style="font-size:13px;color:var(--text3)">Subir foto</div>';var isC=type==='combo';document.getElementById('mtype').value=type||'regular';document.getElementById('modalt').textContent=id?(isC?'Editar combo':'Editar producto'):(isC?'Crear combo':'Nuevo producto');document.getElementById('mcombow').classList.toggle('hidden',!isC);if(id){var menu=gMenu(),p=null,i;for(i=0;i<menu.length;i++)if(menu[i].id===id){p=menu[i];break;}if(!p)return;document.getElementById('mid').value=id;document.getElementById('mname').value=p.name;document.getElementById('mdesc').value=p.desc;document.getElementById('mprice').value=p.price;if(!isC)document.getElementById('mcat').value=p.cat;document.getElementById('mbs').value=p.bs?'1':'0';document.getElementById('mavail').value=p.on?'1':'0';if(p.foto){fotoData=p.foto;document.getElementById('mfprev').innerHTML='<img src="'+p.foto+'" style="width:100%;border-radius:10px">';}if(isC&&p.components){comboCompDefs=JSON.parse(JSON.stringify(p.components));renderCDs();}}else{document.getElementById('mid').value='';document.getElementById('mname').value='';document.getElementById('mdesc').value='';document.getElementById('mprice').value='';document.getElementById('mbs').value='0';document.getElementById('mavail').value='1';if(isC)renderCDs();}document.getElementById('prodmodal').classList.add('open');}
-function closeProd(){document.getElementById('prodmodal').classList.remove('open');}
-function prevFoto(inp){if(!inp.files[0])return;var r=new FileReader();r.onload=function(e){fotoData=e.target.result;document.getElementById('mfprev').innerHTML='<img src="'+fotoData+'" style="width:100%;border-radius:10px">';};r.readAsDataURL(inp.files[0]);}
-
-function addCD(){var menu=gMenu(),cats=[],i;for(i=0;i<menu.length;i++)if(menu[i].type==='regular'&&menu[i].on&&cats.indexOf(menu[i].cat)<0)cats.push(menu[i].cat);comboCompDefs.push({id:'comp'+Date.now(),label:'',required:true,sourceCategory:cats[0]||'arepas'});renderCDs();}
-function removeCD(idx){comboCompDefs.splice(idx,1);renderCDs();}
-function renderCDs(){var menu=gMenu(),cats=[],i,idx,c,co,cL={arepas:'Arepas',cachapas:'Cachapas',bebidas:'Bebidas',extras:'Extras'},html='';for(i=0;i<menu.length;i++)if(menu[i].type==='regular'&&menu[i].on&&cats.indexOf(menu[i].cat)<0)cats.push(menu[i].cat);for(idx=0;idx<comboCompDefs.length;idx++){c=comboCompDefs[idx];co='';for(i=0;i<cats.length;i++)co+='<option value="'+cats[i]+'"'+(c.sourceCategory===cats[i]?' selected':'')+'>'+( cL[cats[i]]||cats[i])+'</option>';html+='<div class="cdef"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span style="font-size:13px;font-weight:700">Componente '+(idx+1)+'</span><button onclick="removeCD('+idx+')" style="background:#FEE2E2;border:none;border-radius:50%;width:26px;height:26px;cursor:pointer;color:#991B1B;font-size:14px;font-family:var(--f)">x</button></div><div class="fg"><label class="fl">Nombre</label><input class="fi" value="'+c.label+'" placeholder="Ej: Tu arepa" oninput="comboCompDefs['+idx+'].label=this.value"></div><div class="two"><div class="fg" style="margin-bottom:0"><label class="fl">Categoria</label><select class="fs" onchange="comboCompDefs['+idx+'].sourceCategory=this.value">'+co+'</select></div><div class="fg" style="margin-bottom:0"><label class="fl">Requerido</label><select class="fs" onchange="comboCompDefs['+idx+'].required=this.value===\'1\'"><option value="1"'+(c.required?' selected':'')+'>Si</option><option value="0"'+(!c.required?' selected':'')+'>No</option></select></div></div></div>';}document.getElementById('ccomplist').innerHTML=html;}
-
-function saveProd(){var name=document.getElementById('mname').value.trim(),price=parseFloat(document.getElementById('mprice').value),type=document.getElementById('mtype').value,i;if(!name||!price){alert('Nombre y precio son obligatorios');return;}if(type==='combo'&&comboCompDefs.length===0){alert('Agrega al menos un componente');return;}var menu=gMenu(),id=document.getElementById('mid').value,comps=null;if(type==='combo'){comps=[];for(i=0;i<comboCompDefs.length;i++)comps.push({id:comboCompDefs[i].id,label:comboCompDefs[i].label,required:comboCompDefs[i].required,sourceCategory:comboCompDefs[i].sourceCategory});}var prod={id:id||'p'+Date.now(),name:name,desc:document.getElementById('mdesc').value.trim(),price:price,cat:type==='combo'?'combos':document.getElementById('mcat').value,bs:document.getElementById('mbs').value==='1',on:document.getElementById('mavail').value==='1',foto:fotoData||null,type:type,components:comps};if(id){for(i=0;i<menu.length;i++)if(menu[i].id===id){menu[i]=prod;break;}}else menu.push(prod);sMenu(menu);renderAdmMenu();closeProd();alert('Producto guardado.');}
-function delProd(id){if(!confirm('Eliminar este producto?'))return;var menu=gMenu(),nm=[],i;for(i=0;i<menu.length;i++)if(menu[i].id!==id)nm.push(menu[i]);sMenu(nm);renderAdmMenu();}
-
-function loadCfgP(){var cfg=gCfg();document.getElementById('cfree').value=cfg.minFree;document.getElementById('cship').value=cfg.shipCost;document.getElementById('cwa').value=cfg.wa;document.getElementById('cbank').value=cfg.bank;document.getElementById('crmin').value=cfg.rateMin||30;}
-function saveCfg(){var cfg=gCfg();cfg.minFree=parseFloat(document.getElementById('cfree').value)||500;cfg.shipCost=parseFloat(document.getElementById('cship').value)||99;cfg.wa=document.getElementById('cwa').value.trim()||cfg.wa;cfg.bank=document.getElementById('cbank').value.trim()||cfg.bank;cfg.rateMin=parseInt(document.getElementById('crmin').value)||30;sCfg(cfg);alert('Configuracion guardada.');}
-function chgPass(){var np=document.getElementById('cpass').value.trim();if(np.length<4){alert('Minimo 4 caracteres');return;}lsSet(K.P,np);document.getElementById('cpass').value='';alert('Contrasena actualizada.');}
-
-try{if(sessionStorage.getItem('ala')==='1')loadAdm();}catch(e){if(_store['ala']==='1')loadAdm();}
-
-
-initFirebase();
-
-
-//     NOTIFICACION SONIDO PEDIDO NUEVO    
-var lastOrderCount = 0;
-var audioCtx = null;
-
-function playNewOrderSound() {
-  try {
-    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
-    var notes = [523, 659, 784, 1047];
-    notes.forEach(function(freq, i) {
-      var osc = audioCtx.createOscillator();
-      var gain = audioCtx.createGain();
-      osc.connect(gain);
-      gain.connect(audioCtx.destination);
-      osc.frequency.value = freq;
-      osc.type = 'sine';
-      gain.gain.setValueAtTime(0.3, audioCtx.currentTime + i * 0.12);
-      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + i * 0.12 + 0.3);
-      osc.start(audioCtx.currentTime + i * 0.12);
-      osc.stop(audioCtx.currentTime + i * 0.12 + 0.3);
-    });
-  } catch(e) {}
-}
-
-function showNewOrderNotif(count) {
-  var badge = document.getElementById('notif-badge');
-  badge.textContent = count === 1 ? 'Pedido nuevo!' : count + ' pedidos nuevos!';
-  badge.style.display = 'block';
-  playNewOrderSound();
-  setTimeout(function() { badge.style.display = 'none'; }, 5000);
-  if (document.title.indexOf('NEW') === -1) {
-    document.title = 'NEW PEDIDO - Admin Arepa Lovers';
-    setTimeout(function() { document.title = 'Admin - Arepa Lovers'; }, 8000);
-  }
-}
-
-function checkNewOrders(orders) {
-  var pending = orders.filter(function(o) {
-    return o.status === 'pendiente' || o.status === 'pendiente_pago';
-  });
-  if (lastOrderCount > 0 && pending.length > lastOrderCount) {
-    var newCount = pending.length - lastOrderCount;
-    showNewOrderNotif(newCount);
-    var el = document.getElementById('ordlist');
-    if (el && el.firstChild) el.firstChild.classList.add('new-order-flash');
-  }
-  lastOrderCount = pending.length;
-}
-
-//     COMANDA / FACTURA    
-function openComanda(ordId) {
-  var orders = gOrders(), ord = null, i;
-  for (i = 0; i < orders.length; i++) if (orders[i].id === ordId) { ord = orders[i]; break; }
-  if (!ord) return;
-  var date = new Date(ord.at).toLocaleString('es-DO', {dateStyle:'full', timeStyle:'short'});
-  var itemsHtml = '';
-  for (i = 0; i < ord.items.length; i++) {
-    var it = ord.items[i];
-    var sub = it.selDesc ? '<div class="comanda-item-sub">' + it.selDesc + '</div>' : '';
-    itemsHtml += '<div class="comanda-item"><div class="comanda-item-name">' + it.qty + 'x ' + it.name + '<span style="float:right">RD$' + (it.price * it.qty) + '</span></div>' + sub + '</div>';
-  }
-  var payLinkHtml = ord.payLink ? '<div style="margin:10px 0;padding:10px;background:#E6F5EC;border-radius:8px;font-size:12px;word-break:break-all"><strong>Link de pago:</strong><br>' + ord.payLink + '</div>' : '';
-  var gpsHtml = ord.gps ? '<div class="comanda-row"><span>GPS</span><span><a href="https://maps.google.com/?q=' + ord.gps.lat + ',' + ord.gps.lng + '">Ver mapa</a></span></div>' : '';
-  document.getElementById('comanda-content').innerHTML =
-    '<img class="comanda-logo" src="' + document.querySelector('.ahlogo').src + '" alt="logo">' +
-    '<div class="comanda-title">Arepa Lovers</div>' +
-    '<div class="comanda-sub">De Pana. Food | Santo Domingo, RD</div>' +
-    '<hr class="comanda-divider">' +
-    '<div class="comanda-row bold"><span>COMANDA</span><span>' + ord.id + '</span></div>' +
-    '<div class="comanda-row"><span>Fecha</span><span>' + date + '</span></div>' +
-    '<div class="comanda-row"><span>Cliente</span><span>' + ord.cliente + '</span></div>' +
-    '<div class="comanda-row"><span>Tel</span><span>' + ord.tel + '</span></div>' +
-    '<div class="comanda-row"><span>Direccion</span><span style="text-align:right;max-width:180px">' + ord.dir + '</span></div>' +
-    (ord.nota ? '<div class="comanda-row"><span>Nota</span><span style="color:var(--red)">' + ord.nota + '</span></div>' : '') +
-    gpsHtml +
-    '<hr class="comanda-divider">' +
-    '<div class="comanda-items">' + itemsHtml + '</div>' +
-    '<hr class="comanda-divider">' +
-    '<div class="comanda-row"><span>Subtotal</span><span>RD$' + ord.sub + '</span></div>' +
-    '<div class="comanda-row"><span>Envio</span><span>' + (ord.ship === 0 ? 'GRATIS' : 'RD$' + ord.ship) + '</span></div>' +
-    '<div class="comanda-row total"><span>TOTAL</span><span>RD$' + ord.total + '</span></div>' +
-    '<hr class="comanda-divider">' +
-    '<div class="comanda-row"><span>Metodo de pago</span><span>' + (ord.pago === 'tarjeta' ? 'Tarjeta Geopagos' : 'Transferencia') + '</span></div>' +
-    payLinkHtml +
-    '<div class="comanda-status">' + stLbl(ord.status) + '</div>' +
-    '<div class="comanda-footer">Arepa Lovers &copy; ' + new Date().getFullYear() + ' | Generado el ' + new Date().toLocaleString('es-DO') + '</div>';
-  document.getElementById('comanda-modal').classList.add('open');
-}
-
-function closeComanda() { document.getElementById('comanda-modal').classList.remove('open'); }
-function printComanda() { window.print(); }
-
-//     AUTO GEOPAGOS LINK    
-function genGeopagosAutoLink(ordId, fbKey, btn) {
-  var orders = gOrders(), ord = null, i;
-  for (i = 0; i < orders.length; i++) if (orders[i].id === ordId) { ord = orders[i]; break; }
-  if (!ord) return;
-  btn.innerHTML = '<span class="geo-loading"></span> Generando...';
-  btn.disabled = true;
-  fetch('/.netlify/functions/geopagos', {
-    method: 'POST',
-    headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({
-      amount: ord.total,
-      orderId: ord.id,
-      description: 'Arepa Lovers - Pedido ' + ord.id,
-      customerName: ord.cliente,
-      customerEmail: ''
-    })
-  }).then(function(r){return r.json();}).then(function(d){
-    if (d.success && d.paymentLink) {
-      if (FB_READY && DB && fbKey) {
-        DB.ref('al_orders/' + fbKey).update({payLink: d.paymentLink}).catch(function(){});
-      }
-      var msg = 'Arepa Lovers: Tu pedido ' + ord.id + ' listo para pagar.\nLink seguro Geopagos:\n' + d.paymentLink + '\nTotal: RD$' + ord.total;
-      var tel = ord.tel.replace(/[^0-9]/g, '');
-      window.open('https://wa.me/' + (tel.charAt(0)==='1' ? tel : '1809'+tel) + '?text=' + encodeURIComponent(msg), '_blank');
-      btn.innerHTML = '&#9989; Link enviado por WA';
-      btn.style.background = 'var(--green)';
-    } else {
-      btn.innerHTML = '&#128179; Generar link Geopagos';
-      btn.disabled = false;
-      var link = prompt('API no disponible. Pega el link manualmente:');
-      if (link && link.trim()) {
-        if (FB_READY && DB && fbKey) DB.ref('al_orders/' + fbKey).update({payLink: link.trim()}).catch(function(){});
-      }
-    }
-  }).catch(function(e) {
-    btn.innerHTML = '&#128179; Generar link Geopagos';
-    btn.disabled = false;
-    var link = prompt('Sin conexion al servidor. Pega el link manualmente:');
-    if (link && link.trim()) {
-      if (FB_READY && DB && fbKey) DB.ref('al_orders/' + fbKey).update({payLink: link.trim()}).catch(function(){});
-    }
-  });
-}
-
-// Override listenAll to also check new orders
-var _origListenAll = listenAll;
-listenAll = function() {
-  if (!FB_READY || !DB) return;
-  DB.ref('al_orders').on('value', function(snap) {
-    var data = snap.val(), arr = [];
-    if (data) {
-      Object.keys(data).forEach(function(k) { var o = data[k]; o.fbKey = k; arr.push(o); });
-      arr.sort(function(a,b) { return b.at.localeCompare(a.at); });
-    }
-    lsSet('al_o', JSON.stringify(arr));
-    checkNewOrders(arr);
-    if (document.getElementById('ordlist') && document.getElementById('ap-pedidos').classList.contains('on')) renderOrders();
-  });
-  DB.ref('al_menu').on('value', function(snap) { var d=snap.val(); if(d){lsSet('al_m',JSON.stringify(d));} });
-  DB.ref('al_config').on('value', function(snap) { var d=snap.val(); if(d){lsSet('al_c',JSON.stringify(d));} });
-};
-
-
-// ---- PEDIDOSYA ENVIOS INTEGRATION ----
-// Pickup address of the kitchen (Santo Domingo)
-var PICKUP = {
-  address: 'Tu direccion de cocina, Santo Domingo, RD',
-  lat: 18.4861,
-  lng: -69.9312
-};
-
-function callAPI(action, data, cb) {
-  var payload = Object.assign({ action: action }, data);
-  fetch('/.netlify/functions/geopagos', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
-  }).then(function(r) { return r.json(); }).then(cb).catch(function(e) { cb({ success: false, error: e.message }); });
-}
-
-function requestRider(ordId, fbKey, btn) {
-  var orders = gOrders(), ord = null, i;
-  for (i = 0; i < orders.length; i++) if (orders[i].id === ordId) { ord = orders[i]; break; }
-  if (!ord) return;
-
-  btn.innerHTML = '<span class="geo-loading"></span> Buscando rider...';
-  btn.disabled = true;
-
-  // Step 1: estimate
-  callAPI('pya_estimate', {
-    orderId: ord.id,
-    pickup: PICKUP,
-    dropoff: {
-      address: ord.dir,
-      lat: ord.gps ? ord.gps.lat : 18.4861,
-      lng: ord.gps ? ord.gps.lng : -69.9312,
-      name: ord.cliente,
-      phone: ord.tel
-    }
-  }, function(est) {
-    if (!est.success || !est.data || !est.data.estimateId) {
-      btn.innerHTML = '&#x1F6F5; Solicitar rider PYA';
-      btn.disabled = false;
-      alert('No hay riders disponibles en este momento. Intenta de nuevo.\n\nDetalle: ' + (est.error || JSON.stringify(est.data)));
-      return;
-    }
-
-    var estimateId = est.data.estimateId;
-    var cost = est.data.totalCost || est.data.cost || '?';
-    var eta = est.data.estimatedTime || est.data.eta || '?';
-
-    var ok = confirm('Rider disponible!\nCosto: RD$' + cost + '\nETA: ' + eta + ' min\n\nConfirmar solicitud?');
-    if (!ok) { btn.innerHTML = '&#x1F6F5; Solicitar rider PYA'; btn.disabled = false; return; }
-
-    // Step 2: create order
-    var itemsDesc = ord.items.map(function(it) { return it.qty + 'x ' + it.name; }).join(', ');
-    callAPI('pya_create', {
-      orderId: ord.id,
-      estimateId: estimateId,
-      pickup: PICKUP,
-      dropoff: {
-        address: ord.dir,
-        lat: ord.gps ? ord.gps.lat : 18.4861,
-        lng: ord.gps ? ord.gps.lng : -69.9312,
-        name: ord.cliente,
-        phone: ord.tel,
-        nota: ord.nota || ''
-      },
-      items: itemsDesc
-    }, function(res) {
-      if (!res.success || !res.data || !res.data.id) {
-        btn.innerHTML = '&#x1F6F5; Solicitar rider PYA';
-        btn.disabled = false;
-        alert('Error al crear el envio: ' + (res.error || JSON.stringify(res.data)));
-        return;
-      }
-
-      var shippingId = res.data.id;
-      var trackUrl = res.data.trackingUrl || res.data.tracking_url || '';
-
-      // Save shippingId to Firebase
-      if (FB_READY && DB && fbKey) {
-        DB.ref('al_orders/' + fbKey).update({
-          pyaShippingId: shippingId,
-          pyaTrackUrl: trackUrl,
-          pyaStatus: 'BUSCANDO_RIDER'
-        }).catch(function() {});
-      }
-
-      btn.innerHTML = '&#x2705; Rider asignado';
-      btn.style.background = 'var(--green)';
-
-      // Send tracking link to client via WhatsApp
-      if (trackUrl) {
-        var msg = 'Arepa Lovers: Tu pedido ' + ord.id + ' esta en camino!\nSigue a tu rider en tiempo real:\n' + trackUrl;
-        var tel = ord.tel.replace(/[^0-9]/g, '');
-        window.open('https://wa.me/' + (tel.charAt(0) === '1' ? tel : '1809' + tel) + '?text=' + encodeURIComponent(msg), '_blank');
-      }
-
-      // Start polling for rider status
-      startRiderTracking(shippingId, fbKey, ordId);
-    });
-  });
-}
-
-function startRiderTracking(shippingId, fbKey, ordId) {
-  var interval = setInterval(function() {
-    callAPI('pya_track', { shippingId: shippingId }, function(res) {
-      if (!res.success || !res.data) return;
-      var status = res.data.status || res.data.state || '';
-      var riderName = (res.data.courier && res.data.courier.name) ? res.data.courier.name : '';
-      var riderPhone = (res.data.courier && res.data.courier.phone) ? res.data.courier.phone : '';
-
-      if (FB_READY && DB && fbKey) {
-        var upd = { pyaStatus: status };
-        if (riderName) upd.pyaRider = riderName;
-        if (riderPhone) upd.pyaRiderPhone = riderPhone;
-        DB.ref('al_orders/' + fbKey).update(upd).catch(function() {});
-      }
-
-      // If delivered, stop polling and update order status
-      if (status === 'COMPLETED' || status === 'DELIVERED' || status === 'delivered') {
-        clearInterval(interval);
-        updOrd(ordId, fbKey, 'entregado');
-      }
-      // If cancelled by PYA, alert
-      if (status === 'CANCELLED' || status === 'CANCELED') {
-        clearInterval(interval);
-        alert('El rider de PedidosYa cancelo el envio del pedido ' + ordId + '. Por favor solicita otro rider.');
-      }
-    });
-  }, 30000); // Poll every 30 seconds
-}
-
-function cancelRider(shippingId, fbKey, ordId) {
-  if (!confirm('Cancelar el rider de PedidosYa para este pedido?')) return;
-  callAPI('pya_cancel', { shippingId: shippingId }, function(res) {
-    if (res.success) {
-      alert('Rider cancelado.');
-      if (FB_READY && DB && fbKey) DB.ref('al_orders/' + fbKey).update({ pyaStatus: 'CANCELADO', pyaShippingId: null }).catch(function() {});
-    } else {
-      alert('No se pudo cancelar: ' + (res.error || ''));
-    }
-  });
+// ========== TABS ==========
+function aTab(t,btn){
+  var tabs=document.querySelectorAll(".atab"),panes=document.querySelectorAll(".apane"),i;
+  for(i=0;i<tabs.length;i++)tabs[i].classList.remove("on");
+  btn.classList.add("on");
+  for(i=0;i<panes.length;i++){panes[i].classList.remove("on");panes[i].classList.add("hidden");}
+  document.getElementById("ap-"+t).classList.remove("hidden");
+  document.getElementById("ap-"+t).classList.add("on");
+  if(t==="opiniones")renderAdmRevs();
+  if(t==="menu")renderAdmMenu();
+  if(t==="horario")loadScheduleUI();
 }
 
 // ========== STORE CONTROL ==========
@@ -749,67 +452,266 @@ function getStoreStatus(){
   if(d){try{return JSON.parse(d);}catch(e){}}
   return{open:true,manualOverride:false};
 }
-
 function setStoreOpen(open){
-  var status={open:open,manualOverride:open===true?"open":true,updatedAt:new Date().toISOString()};
+  var status={open:open,manualOverride:!open,updatedAt:new Date().toISOString()};
   lsSet("al_store",JSON.stringify(status));
   if(FB_READY&&DB)DB.ref("al_store").set(status).catch(function(){});
   renderStoreBtn();
+  alert(open?"Tienda ABIERTA. Los clientes pueden ordenar.":"Tienda CERRADA. Los clientes ven mensaje de fuera de servicio.");
 }
-
 function renderStoreBtn(){
-  var btn=document.getElementById("store-toggle-btn");
-  if(!btn)return;
   var status=getStoreStatus();
-  var isOpen=status.manualOverride!==true;
-  btn.innerHTML=isOpen?"&#x1F7E2; ABIERTO - Toca para cerrar":"&#x1F534; CERRADO - Toca para abrir";
-  btn.style.background=isOpen?"var(--green)":"var(--red)";
+  var isOpen=!status.manualOverride;
+  var btn=document.getElementById("store-toggle-btn");
+  var bigBtn=document.getElementById("store-btn-big");
+  if(btn){btn.textContent=isOpen?"&#x1F7E2; ABIERTO":"&#x1F534; CERRADO";btn.style.background=isOpen?"var(--green)":"var(--red)";}
+  if(bigBtn){bigBtn.textContent=isOpen?"&#x1F7E2; ABIERTO - Toca para CERRAR":"&#x1F534; CERRADO - Toca para ABRIR";bigBtn.style.background=isOpen?"var(--green)":"var(--red)";bigBtn.setAttribute("onclick","setStoreOpen("+(isOpen?"false":"true")+")");}
 }
 
-// ========== REVIEWS ADMIN ==========
+// ========== DASHBOARD ==========
+function updateDashboard(){
+  var orders=gOrders();
+  var counts={proceso:0,completadas:0,cerradas:0,pendientes:0,aceptados:0,rechazados:0};
+  orders.forEach(function(o){
+    if(o.status==="preparando")counts.proceso++;
+    else if(o.status==="entregado")counts.completadas++;
+    else if(o.status==="rechazado")counts.cerradas++;
+    else if(o.status==="pendiente"||o.status==="pendiente_pago")counts.pendientes++;
+    else if(o.status==="confirmado")counts.aceptados++;
+  });
+  counts.rechazados=counts.cerradas;
+  ["proceso","completadas","cerradas","pendientes","aceptados","rechazados"].forEach(function(k){
+    var el=document.getElementById("dash-"+k);
+    if(el)el.textContent=counts[k];
+  });
+}
+
+// ========== ORDERS ==========
+function stBg(s){return{pendiente:"#FEF3C7",confirmado:"var(--gbg)",rechazado:"#FEE2E2",preparando:"#E0F2FE",entregado:"var(--bg2)",pendiente_pago:"#EDE9FE"}[s]||"var(--bg2)";}
+function stCl(s){return{pendiente:"#92400E",confirmado:"var(--green)",rechazado:"#991B1B",preparando:"#0369A1",entregado:"var(--text2)",pendiente_pago:"#5B21B6"}[s]||"var(--text2)";}
+function stLbl(s){return{pendiente:"Pendiente",confirmado:"Confirmado",rechazado:"Rechazado",preparando:"Preparando",entregado:"Entregado",pendiente_pago:"Link pago pendiente"}[s]||s;}
+
+function renderOrders(){
+  var orders=gOrders(),i,o,date,itxt,j,it,acts,html="";
+  // Filter by status
+  if(ordFilt!=="all"){var f=[];for(i=0;i<orders.length;i++)if(orders[i].status===ordFilt)f.push(orders[i]);orders=f;}
+  // Filter by date
+  if(ordDate){var fd=[];for(i=0;i<orders.length;i++)if(orders[i].at&&orders[i].at.startsWith(ordDate))fd.push(orders[i]);orders=fd;}
+  var el=document.getElementById("ordlist");
+  if(!orders.length){el.innerHTML="<div style='text-align:center;padding:40px;color:var(--text3)'>No hay pedidos"+( ordDate?" para esta fecha":"")+"</div>";return;}
+  for(i=0;i<orders.length;i++){
+    o=orders[i];
+    date=new Date(o.at).toLocaleString("es-DO",{dateStyle:"short",timeStyle:"short"});
+    itxt="";for(j=0;j<o.items.length;j++){it=o.items[j];itxt+=it.name+" x"+it.qty;if(it.selDesc)itxt+=" ("+it.selDesc+")";if(j<o.items.length-1)itxt+=", ";}
+    var fbk=o.fbKey||"";
+    var gLink=o.gps?"<a href='https://maps.google.com/?q="+o.gps.lat+","+o.gps.lng+"' target='_blank' style='color:var(--red)'>GPS</a> - ":"";
+    var plBtn=o.payLink?"<button class='ab av' data-link='"+o.payLink+"'>Ver link</button>":"";
+    var glBtn=(o.pago==="tarjeta"&&!o.payLink)?"<button class='ab ageo' data-geo-id='"+o.id+"' data-geo-fk='"+fbk+"'>Generar link Geopagos</button>":"";
+    acts="";
+    if(o.status==="pendiente"||o.status==="pendiente_pago"){acts=(o.comp?"<button class='ab av' data-togcp='"+o.id+"'>Ver comprobante</button>":"")+plBtn+glBtn+"<button class='ab ac' data-upd-id='"+o.id+"' data-upd-fk='"+fbk+"' data-upd-st='confirmado'>Confirmar</button><button class='ab ar' data-upd-id='"+o.id+"' data-upd-fk='"+fbk+"' data-upd-st='rechazado'>Rechazar</button>";}
+    else if(o.status==="confirmado"){acts="<button class='ab apr' data-upd-id='"+o.id+"' data-upd-fk='"+fbk+"' data-upd-st='preparando'>Preparando</button>";}
+    else if(o.status==="preparando"){acts="<button class='ab ad' data-upd-id='"+o.id+"' data-upd-fk='"+fbk+"' data-upd-st='entregado'>Entregado</button>";}
+    var rb=o.rated?"<span style='font-size:10px;background:var(--gbg);color:var(--green);padding:2px 7px;border-radius:50px;font-weight:700;margin-left:4px'>Calificado</span>":"";
+    var comBtn="<button class='ab' style='background:#1A0E08;color:white' data-comanda='"+o.id+"'>&#129534; Comanda</button>";
+    html+="<div class='ocrd' id='oc-"+o.id+"'><div class='otop'><div><div class='oid'>"+o.id+" - "+date+"</div><div class='ocl'>"+o.cliente+rb+"</div><div class='oaddr'>"+gLink+o.tel+"</div></div><div style='text-align:right'><div class='oamt'>RD$"+o.total+"</div><div class='ost' style='background:"+stBg(o.status)+";color:"+stCl(o.status)+"'>"+stLbl(o.status)+"</div></div></div><div class='oitems'>"+itxt+"</div><div class='oaddr'>"+o.dir+(o.nota?" - "+o.nota:"")+" - "+(o.pago==="tarjeta"?"Tarjeta Geopagos":"Transferencia")+"</div>"+(o.comp?"<div class='cprev' id='cp-"+o.id+"'><img src='"+o.comp+"'></div>":"")+"<div class='oacts'>"+comBtn+acts+"</div></div>";
+  }
+  el.innerHTML=html;
+}
+
+function togCp(id){var el=document.getElementById("cp-"+id);if(el)el.style.display=el.style.display==="block"?"none":"block";}
+
+function updOrd(id,fbKey,status){
+  var orders=gOrders(),o=null,i;
+  for(i=0;i<orders.length;i++)if(orders[i].id===id){o=orders[i];break;}
+  if(!o)return;
+  if(FB_READY&&DB&&fbKey){DB.ref("al_orders/"+fbKey).update({status:status}).catch(function(){});}
+  else{o.status=status;sOrders(orders);}
+  var msgs={confirmado:"Arepa Lovers: Tu pedido "+id+" fue confirmado!",rechazado:"Arepa Lovers: No pudimos verificar el pago de "+id+". Contactanos.",preparando:"Arepa Lovers: Tu pedido "+id+" esta siendo preparado. Ya casi!"};
+  if(msgs[status]&&o.tel){var tel=o.tel.replace(/[^0-9]/g,"");window.open("https://wa.me/"+(tel.charAt(0)==="1"?tel:"1809"+tel)+"?text="+encodeURIComponent(msgs[status]),"_blank");}
+  if(status==="entregado"){
+    var cfg=gCfg(),ms=(cfg.rateMin||30)*60*1000;
+    setTimeout(function(){var msg="Arepa Lovers - Hola "+o.cliente+"! Como estuvo tu pedido "+o.id+"? Tu opinion nos ayuda a mejorar.";var tel2=o.tel.replace(/[^0-9]/g,"");window.open("https://wa.me/"+(tel2.charAt(0)==="1"?tel2:"1809"+tel2)+"?text="+encodeURIComponent(msg),"_blank");},ms);
+  }
+  updateDashboard();
+}
+
+function fOrd(f,btn){var chips=document.querySelectorAll("#orf .chip"),i;for(i=0;i<chips.length;i++)chips[i].classList.remove("on");btn.classList.add("on");ordFilt=f;renderOrders();}
+
+function filterByDate(val){ordDate=val;renderOrders();}
+
+function genGeoLink(oid,fbKey){
+  var orders=gOrders(),ord=null,i;
+  for(i=0;i<orders.length;i++)if(orders[i].id===oid){ord=orders[i];break;}
+  if(!ord)return;
+  var link=prompt("Pega el link de pago Geopagos para el pedido "+oid+" (Total: RD$"+ord.total+"):");
+  if(link&&link.trim()){
+    if(FB_READY&&DB&&fbKey)DB.ref("al_orders/"+fbKey).update({payLink:link.trim()}).catch(function(){});
+    var msg="Arepa Lovers: Tu pedido "+oid+" listo para pagar.\n"+link.trim()+"\nTotal: RD$"+ord.total;
+    var tel=ord.tel.replace(/[^0-9]/g,"");
+    window.open("https://wa.me/"+(tel.charAt(0)==="1"?tel:"1809"+tel)+"?text="+encodeURIComponent(msg),"_blank");
+  }
+}
+
+// ========== COMANDA ==========
+function openComanda(ordId){
+  var orders=gOrders(),ord=null,i;
+  for(i=0;i<orders.length;i++)if(orders[i].id===ordId){ord=orders[i];break;}
+  if(!ord)return;
+  var date=new Date(ord.at).toLocaleString("es-DO",{dateStyle:"full",timeStyle:"short"});
+  var itemsHtml="";
+  for(i=0;i<ord.items.length;i++){
+    var it=ord.items[i];
+    var sub=it.selDesc?"<div style='font-size:11px;color:var(--text3)'>"+it.selDesc+"</div>":"";
+    itemsHtml+="<div style='display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--bg2)'><div><strong>"+it.qty+"x "+it.name+"</strong>"+sub+"</div><span>RD$"+(it.price*it.qty)+"</span></div>";
+  }
+  document.getElementById("comanda-content").innerHTML=
+    "<div style='text-align:center;margin-bottom:12px'><strong style='font-size:18px;color:var(--red)'>Arepa Lovers</strong><br><span style='font-size:11px;color:var(--text3)'>De Pana. Food | Santo Domingo</span></div>"+
+    "<hr style='border:none;border-top:2px dashed var(--bg3);margin:10px 0'>"+
+    "<div style='display:flex;justify-content:space-between'><span style='font-weight:800'>COMANDA</span><span style='font-weight:800'>"+ord.id+"</span></div>"+
+    "<div style='font-size:12px;color:var(--text3);margin-bottom:4px'>"+date+"</div>"+
+    "<div><strong>Cliente:</strong> "+ord.cliente+" | "+ord.tel+"</div>"+
+    "<div style='margin-top:4px'><strong>Direccion:</strong> "+ord.dir+"</div>"+
+    (ord.nota?"<div><strong>Nota:</strong> <span style='color:var(--red)'>"+ord.nota+"</span></div>":"")+
+    "<hr style='border:none;border-top:2px dashed var(--bg3);margin:10px 0'>"+
+    itemsHtml+
+    "<hr style='border:none;border-top:2px dashed var(--bg3);margin:10px 0'>"+
+    "<div style='display:flex;justify-content:space-between'><span>Subtotal</span><span>RD$"+ord.sub+"</span></div>"+
+    "<div style='display:flex;justify-content:space-between'><span>Envio</span><span>"+(ord.ship===0?"GRATIS":"RD$"+ord.ship)+"</span></div>"+
+    "<div style='display:flex;justify-content:space-between;font-size:18px;font-weight:900;color:var(--red);margin-top:6px'><span>TOTAL</span><span>RD$"+ord.total+"</span></div>"+
+    "<hr style='border:none;border-top:2px dashed var(--bg3);margin:10px 0'>"+
+    "<div style='display:flex;justify-content:space-between'><span>Pago</span><span>"+(ord.pago==="tarjeta"?"Tarjeta Geopagos":"Transferencia")+"</span></div>"+
+    "<div style='text-align:center;background:var(--gbg);border-radius:8px;padding:8px;margin-top:10px;font-weight:700;color:var(--green)'>"+stLbl(ord.status)+"</div>"+
+    "<div style='text-align:center;font-size:10px;color:var(--text3);margin-top:10px'>Arepa Lovers &copy; "+new Date().getFullYear()+"</div>";
+  document.getElementById("comanda-modal").classList.add("open");
+}
+function closeComanda(){document.getElementById("comanda-modal").classList.remove("open");}
+function printComanda(){window.print();}
+
+// ========== REVIEWS ==========
+function calcRating(){
+  var revs=gRevs(),sum=0,count=0,i;
+  for(i=0;i<revs.length;i++){if(!revs[i].hidden){sum+=revs[i].stars;count++;}}
+  return{score:count>0?Math.round(sum/count*100)/100:0,count:count};
+}
+
 function renderAdmRevs(){
   var revs=gRevs(),r=calcRating(),i,rev,date,stars,th,html="";
-  document.getElementById("statsc").textContent=r.count>0?r.score.toFixed(1)+"/5":"-";
-  document.getElementById("statcnt").textContent=r.count+" resenas";
+  document.getElementById("statsc").textContent=r.count>0?r.score.toFixed(1)+"/5":"Sin resenas";
+  document.getElementById("statcnt").textContent=r.count+" resenas visibles";
   document.getElementById("statstars").innerHTML=r.count>0?"<span style='color:var(--gold);font-size:22px'>&#9733;&#9733;&#9733;&#9733;&#9733;</span>":"";
   var total=r.count||1,bh="",v;
   for(v=5;v>=1;v--){
-    var allRevs=gRevs(),n=allRevs.filter(function(r2){return !r2.hidden&&r2.stars===v;}).length;
+    var n=revs.filter(function(rv){return !rv.hidden&&rv.stars===v;}).length;
     bh+="<div class='barrow'><span class='barlbl'>"+v+"</span><div class='bartrk'><div class='barfil' style='width:"+Math.round(n/total*100)+"%'></div></div><span class='barcnt'>"+n+"</span></div>";
   }
   document.getElementById("statbars").innerHTML=bh;
+
+  // Add review form
+  var addForm="<div class='ckcrd' style='margin-bottom:14px'><div class='ckt2'>&#10133; Agregar resena como administrador</div>"+
+    "<div class='fg'><label class='fl'>Nombre del cliente</label><input class='fi' id='adm-rev-name' placeholder='Nombre' type='text'></div>"+
+    "<div class='fg'><label class='fl'>Puntuacion</label><div style='display:flex;gap:8px;margin-top:4px'>"+
+    "<button class='rtag' data-star='1' onclick='selAdmStar(1)'>1 &#9733;</button>"+
+    "<button class='rtag' data-star='2' onclick='selAdmStar(2)'>2 &#9733;</button>"+
+    "<button class='rtag' data-star='3' onclick='selAdmStar(3)'>3 &#9733;</button>"+
+    "<button class='rtag' data-star='4' onclick='selAdmStar(4)'>4 &#9733;</button>"+
+    "<button class='rtag' data-star='5' onclick='selAdmStar(5)'>5 &#9733;</button>"+
+    "</div></div>"+
+    "<div class='fg' style='margin-bottom:0'><label class='fl'>Comentario (opcional)</label><textarea class='ft' id='adm-rev-comment' placeholder='Excelente servicio...'></textarea></div>"+
+    "<button class='savbtn' onclick='addAdmReview()' style='margin-top:12px'>Agregar resena</button></div>";
+
   var rl=document.getElementById("revlist");
-  var allRevs=gRevs();
-  if(!allRevs.length){rl.innerHTML="<div style='text-align:center;padding:30px;color:var(--text3)'>Aun no hay calificaciones</div>";return;}
-  for(i=0;i<allRevs.length;i++){
-    rev=allRevs[i];
+  if(!revs.length){rl.innerHTML=addForm+"<div style='text-align:center;padding:30px;color:var(--text3)'>Aun no hay calificaciones</div>";return;}
+  for(i=0;i<revs.length;i++){
+    rev=revs[i];
     date=new Date(rev.at).toLocaleString("es-DO",{dateStyle:"short",timeStyle:"short"});
     stars="";for(var s=1;s<=5;s++)stars+=s<=rev.stars?"<span style='color:var(--gold)'>&#9733;</span>":"<span style='color:var(--bg3)'>&#9734;</span>";
     th="";if(rev.tags&&rev.tags.length){th="<div class='revtags'>";for(var t=0;t<rev.tags.length;t++)th+="<span class='revtag'>"+rev.tags[t]+"</span>";th+="</div>";}
-    var hideBtn="<button class='ab "+(rev.hidden?"ac":"ar")+"' onclick='toggleRev(\""+rev.id+"\")' style='font-size:11px;padding:5px 10px'>"+(rev.hidden?"Mostrar":"Ocultar")+"</button>";
-    var delBtn="<button class='ab' style='background:#7F1D1D;color:white;font-size:11px;padding:5px 10px' onclick='deleteRev(\""+rev.id+"\")'>Eliminar</button>";
-    html+="<div class='revi"+(rev.hidden?" rev-hidden":"")+"'><div class='revtop'><div><div class='revname'>"+rev.cliente+(rev.hidden?" <span style='font-size:10px;color:var(--text3)'>[Oculta]</span>":"")+"</div><div style='font-size:12px;color:var(--text3)'>Pedido "+rev.orderId+" - "+date+"</div></div><div style='display:flex;gap:6px'>"+hideBtn+delBtn+"</div></div><div style='font-size:15px;margin-bottom:6px'>"+stars+"</div>"+th+(rev.comment?"<div class='revcmt'>\""+rev.comment+"\"</div>":"")+"</div>";
+    var hideBtn="<button class='ab "+(rev.hidden?"ac":"ar")+"' data-toggle-rev='"+rev.id+"' style='font-size:11px;padding:5px 10px'>"+(rev.hidden?"Mostrar":"Ocultar")+"</button>";
+    var delBtn="<button class='ab' style='background:#7F1D1D;color:white;font-size:11px;padding:5px 10px' data-del-rev='"+rev.id+"'>Eliminar</button>";
+    var parts=[];
+    parts.push("<div class=\'revi"+(rev.hidden?" rev-hidden":"")+"\'>");
+    parts.push("<div class=\'revtop\'>");
+    parts.push("<div><div class=\'revname\'>"+rev.cliente);
+    if(rev.byAdmin)parts.push(" <span style=\'font-size:10px;color:var(--red)\'>[Admin]</span>");
+    if(rev.hidden)parts.push(" <span style=\'font-size:10px;color:var(--text3)\'>[Oculta]</span>");
+    parts.push("</div><div style=\'font-size:12px;color:var(--text3)\'>" + date + "</div></div>");
+    parts.push("<div style=\'display:flex;gap:6px\'>"+hideBtn+delBtn+"</div>");
+    parts.push("</div>");
+    parts.push("<div style=\'font-size:15px;margin-bottom:6px\'>"+stars+"</div>");
+    parts.push(th);
+    if(rev.comment)parts.push("<div class=\'revcmt\'>\""+rev.comment+"\"</div>");
+    parts.push("</div>");
+    html+=parts.join("");
   }
-  rl.innerHTML=html;
+  rl.innerHTML=addForm+html;
+}
+
+var admSelStar=5;
+function selAdmStar(v){
+  admSelStar=v;
+  var btns=document.querySelectorAll("[data-star]"),i;
+  for(i=0;i<btns.length;i++){btns[i].classList.toggle("sel",parseInt(btns[i].getAttribute("data-star"))<=v);}
+}
+
+function addAdmReview(){
+  var name=document.getElementById("adm-rev-name").value.trim();
+  if(!name){alert("Ingresa el nombre del cliente");return;}
+  var rev={id:"r"+Date.now(),orderId:"admin",cliente:name,stars:admSelStar,tags:[],comment:document.getElementById("adm-rev-comment").value.trim(),at:new Date().toISOString(),hidden:false,byAdmin:true};
+  var revs=gRevs();revs.unshift(rev);sRevs(revs);
+  if(FB_READY&&DB)DB.ref("al_reviews").push(rev).catch(function(){});
+  document.getElementById("adm-rev-name").value="";
+  document.getElementById("adm-rev-comment").value="";
+  renderAdmRevs();
+  alert("Resena agregada!");
 }
 
 function toggleRev(id){
   var revs=gRevs(),i;
   for(i=0;i<revs.length;i++)if(revs[i].id===id){revs[i].hidden=!revs[i].hidden;break;}
-  lsSet("al_r",JSON.stringify(revs));
-  if(FB_READY&&DB)DB.ref("al_reviews_hidden/"+id).set(revs.find(function(r){return r.id===id;}).hidden).catch(function(){});
+  sRevs(revs);
+  if(FB_READY&&DB){var rev=revs.find(function(r){return r.id===id;});if(rev&&rev.fbId)DB.ref("al_reviews/"+rev.fbId+"/hidden").set(rev.hidden).catch(function(){});}
   renderAdmRevs();
 }
-
 function deleteRev(id){
   if(!confirm("Eliminar esta resena permanentemente?"))return;
-  var revs=gRevs().filter(function(r){return r.id!==id;});
-  lsSet("al_r",JSON.stringify(revs));
-  if(FB_READY&&DB)DB.ref("al_reviews/"+id).remove().catch(function(){});
+  var revs=gRevs(),del=revs.find(function(r){return r.id===id;});
+  sRevs(revs.filter(function(r){return r.id!==id;}));
+  if(FB_READY&&DB&&del&&del.fbId)DB.ref("al_reviews/"+del.fbId).remove().catch(function(){});
   renderAdmRevs();
 }
 
-// ========== PRODUCT ORDER ==========
+// ========== MENU ADMIN ==========
+function renderAdmMenu(){
+  var menu=gMenu(),html="",i,p,img,ex;
+  // Sort by category order then position
+  menu.sort(function(a,b){
+    var ao=CAT_ORDER.indexOf(a.cat),bo=CAT_ORDER.indexOf(b.cat);
+    if(ao!==bo)return ao-bo;
+    return (a.order||99)-(b.order||99);
+  });
+  var lastCat="";
+  for(i=0;i<menu.length;i++){
+    p=menu[i];
+    if(p.cat!==lastCat){html+="<div style='font-size:13px;font-weight:800;color:var(--red);padding:10px 4px 4px;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--bg2);margin-bottom:6px'>"+ICONS[p.cat]+" "+(CAT_LABELS[p.cat]||p.cat)+"</div>";lastCat=p.cat;}
+    img=p.foto?("<div class='mrimg'><img src='"+p.foto+"'></div>"):("<div class='mrimg'>"+icon(p.cat)+"</div>");
+    ex=p.type==="combo"?"<span style='font-size:10px;background:rgba(184,16,30,.1);color:var(--red);padding:2px 7px;border-radius:50px;font-weight:700'>Combo "+(p.components?p.components.length:0)+"</span> ":"";
+    var mparts=[];
+    mparts.push("<div class=\'mrow\'>");
+    mparts.push(img);
+    mparts.push("<div class=\'mrinf\'><div class=\'mrname\'>"+p.name+(!p.on?" [oculto]":"")+"</div>");
+    mparts.push("<div class=\'mrprice\'>RD$"+p.price+"</div>");
+    mparts.push("<div class=\'mrcat\'>"+ex+p.cat+(p.bs?" - Best Seller":"")+"</div></div>");
+    mparts.push("<div class=\'mrbtns\'>");
+    mparts.push("<button class=\'ebtn\' data-move-id=\'"+p.id+"\' data-move-dir=\'up\' title=\'Subir\'>&#8679;</button>");
+    mparts.push("<button class=\'ebtn\' data-move-id=\'"+p.id+"\' data-move-dir=\'down\' title=\'Bajar\'>&#8681;</button>");
+    mparts.push("<button class=\'ebtn\' data-prod-id=\'"+p.id+"\' data-prod-type=\'"+(p.type||"regular")+"\'>&#9998;</button>");
+    mparts.push("<button class=\'dbtn\' data-del-prod=\'"+p.id+"\'>&#10005;</button>");
+    mparts.push("</div></div>");
+    html+=mparts.join("");
+  }
+  document.getElementById("admenu").innerHTML=html;
+}
+
 function moveProduct(id,dir){
   var menu=gMenu(),cat=null,i,idx=-1;
   for(i=0;i<menu.length;i++)if(menu[i].id===id){cat=menu[i].cat;break;}
@@ -820,38 +722,150 @@ function moveProduct(id,dir){
   var tmp=catItems[idx].order||idx+1;
   catItems[idx].order=catItems[swapIdx].order||swapIdx+1;
   catItems[swapIdx].order=tmp;
-  for(i=0;i<menu.length;i++){
-    for(var j=0;j<catItems.length;j++){
-      if(menu[i].id===catItems[j].id)menu[i].order=catItems[j].order;
-    }
-  }
+  for(i=0;i<menu.length;i++){for(var j=0;j<catItems.length;j++){if(menu[i].id===catItems[j].id)menu[i].order=catItems[j].order;}}
   sMenu(menu);renderAdmMenu();
 }
 
-// ========== SCHEDULE ==========
-function saveSchedule(){
-  var cfg=gCfg();
-  cfg.schedule={
-    enabled:document.getElementById("sched-enabled").checked,
-    open:document.getElementById("sched-open").value,
-    close:document.getElementById("sched-close").value,
-    days:[]
-  };
-  var checks=document.querySelectorAll(".sched-day:checked");
-  for(var i=0;i<checks.length;i++)cfg.schedule.days.push(parseInt(checks[i].value));
-  sCfg(cfg);
-  alert("Horario guardado!");
+function openProd(id,type){
+  fotoData=null;comboCompDefs=[];
+  document.getElementById("mfprev").innerHTML="<div style='font-size:28px'>&#128247;</div><div style='font-size:13px;color:var(--text3)'>Subir foto</div>";
+  var isC=type==="combo";
+  document.getElementById("mtype").value=type||"regular";
+  document.getElementById("modalt").textContent=id?(isC?"Editar combo":"Editar producto"):(isC?"Crear combo":"Nuevo producto");
+  document.getElementById("mcombow").classList.toggle("hidden",!isC);
+  if(id){
+    var menu=gMenu(),p=null,i;for(i=0;i<menu.length;i++)if(menu[i].id===id){p=menu[i];break;}if(!p)return;
+    document.getElementById("mid").value=id;document.getElementById("mname").value=p.name;document.getElementById("mdesc").value=p.desc;document.getElementById("mprice").value=p.price;
+    if(!isC)document.getElementById("mcat").value=p.cat;
+    document.getElementById("mbs").value=p.bs?"1":"0";document.getElementById("mavail").value=p.on?"1":"0";
+    if(p.foto){fotoData=p.foto;document.getElementById("mfprev").innerHTML="<img src='"+p.foto+"' style='width:100%;border-radius:10px'>";}
+    if(isC&&p.components){comboCompDefs=JSON.parse(JSON.stringify(p.components));renderCDs();}
+  }else{
+    document.getElementById("mid").value="";document.getElementById("mname").value="";document.getElementById("mdesc").value="";document.getElementById("mprice").value="";
+    document.getElementById("mbs").value="0";document.getElementById("mavail").value="1";
+    if(isC)renderCDs();
+  }
+  document.getElementById("prodmodal").classList.add("open");
 }
+function closeProd(){document.getElementById("prodmodal").classList.remove("open");}
+function prevFoto(inp){if(!inp.files[0])return;var r=new FileReader();r.onload=function(e){fotoData=e.target.result;document.getElementById("mfprev").innerHTML="<img src='"+fotoData+"' style='width:100%;border-radius:10px'>";};r.readAsDataURL(inp.files[0]);}
+function addCD(){var menu=gMenu(),cats=[],i;for(i=0;i<menu.length;i++)if(menu[i].type==="regular"&&menu[i].on&&cats.indexOf(menu[i].cat)<0)cats.push(menu[i].cat);comboCompDefs.push({id:"comp"+Date.now(),label:"",required:true,sourceCategory:cats[0]||"arepas"});renderCDs();}
+function removeCD(idx){comboCompDefs.splice(idx,1);renderCDs();}
+function renderCDs(){
+  var menu=gMenu(),cats=[],i,idx,c,co,cL={arepas:"Arepas",cachapas:"Cachapas",bebidas:"Bebidas",extras:"Extras",tequenos:"Tequenos"},html="";
+  for(i=0;i<menu.length;i++)if(menu[i].type==="regular"&&menu[i].on&&cats.indexOf(menu[i].cat)<0)cats.push(menu[i].cat);
+  for(idx=0;idx<comboCompDefs.length;idx++){
+    c=comboCompDefs[idx];co="";
+    for(i=0;i<cats.length;i++)co+="<option value='"+cats[i]+"'"+(c.sourceCategory===cats[i]?" selected":"")+">"+(cL[cats[i]]||cats[i])+"</option>";
+    var cp=[];
+    cp.push("<div class=\'cdef\'>");
+    cp.push("<div style=\'display:flex;justify-content:space-between;align-items:center;margin-bottom:8px\'>");
+    cp.push("<span style=\'font-size:13px;font-weight:700\'>Componente "+(idx+1)+"</span>");
+    cp.push("<button data-rm-cd=\'"+idx+"\' style=\'background:#FEE2E2;border:none;border-radius:50%;width:26px;height:26px;cursor:pointer;color:#991B1B;font-size:14px;font-family:var(--f)\'>x</button>");
+    cp.push("</div>");
+    cp.push("<div class=\'fg\'><label class=\'fl\'>Nombre</label>");
+    cp.push("<input class=\'fi\' value=\'"+c.label+"\' placeholder=\'Ej: Tu arepa\' data-cd-idx=\'"+idx+"\' onchange=\'comboCompDefs["+idx+"].label=this.value\'>");
+    cp.push("</div><div class=\'two\'>");
+    cp.push("<div class=\'fg\' style=\'margin-bottom:0\'><label class=\'fl\'>Categoria</label><select class=\'fs\' data-cd-cat=\'"+idx+"\' onchange=\'comboCompDefs["+idx+"].sourceCategory=this.value\'>"+co+"</select></div>");
+    cp.push("<div class='fg' style='margin-bottom:0'><label class='fl'>Requerido</label><select class='fs' data-cd-req='"+idx+"'><option value='1'"+(c.required?" selected":"")+">Si</option><option value='0'"+((!c.required)?" selected":"")+">No</option></select></div>");
+    cp.push("<option value=\'1\'"+(c.required?" selected":"")+">Si</option>");
+    cp.push("<option value=\'0\'"+((!c.required)?" selected":"")+">No</option>");
+    cp.push("</select></div></div></div>");
+    html+=cp.join("");
+  }
+  document.getElementById("ccomplist").innerHTML=html;
+}
+function saveProd(){
+  var name=document.getElementById("mname").value.trim(),price=parseFloat(document.getElementById("mprice").value),type=document.getElementById("mtype").value,i;
+  if(!name||!price){alert("Nombre y precio son obligatorios");return;}
+  var menu=gMenu(),id=document.getElementById("mid").value,comps=null;
+  if(type==="combo"){comps=[];for(i=0;i<comboCompDefs.length;i++)comps.push({id:comboCompDefs[i].id,label:comboCompDefs[i].label,required:comboCompDefs[i].required,sourceCategory:comboCompDefs[i].sourceCategory});}
+  var prod={id:id||"p"+Date.now(),name:name,desc:document.getElementById("mdesc").value.trim(),price:price,cat:type==="combo"?"combos":document.getElementById("mcat").value,bs:document.getElementById("mbs").value==="1",on:document.getElementById("mavail").value==="1",foto:fotoData||null,type:type,components:comps,order:99};
+  if(id){for(i=0;i<menu.length;i++)if(menu[i].id===id){prod.order=menu[i].order||99;menu[i]=prod;break;}}else{var catItems=menu.filter(function(p){return p.cat===prod.cat;});prod.order=catItems.length+1;menu.push(prod);}
+  sMenu(menu);renderAdmMenu();closeProd();alert("Producto guardado.");
+}
+function delProd(id){if(!confirm("Eliminar este producto?"))return;var menu=gMenu(),nm=[],i;for(i=0;i<menu.length;i++)if(menu[i].id!==id)nm.push(menu[i]);sMenu(nm);renderAdmMenu();}
 
+// ========== CONFIG ==========
+function loadCfgP(){var cfg=gCfg();document.getElementById("cfree").value=cfg.minFree;document.getElementById("cship").value=cfg.shipCost;document.getElementById("cwa").value=cfg.wa;document.getElementById("cbank").value=cfg.bank;document.getElementById("crmin").value=cfg.rateMin||30;}
+function saveCfg(){var cfg=gCfg();cfg.minFree=parseFloat(document.getElementById("cfree").value)||500;cfg.shipCost=parseFloat(document.getElementById("cship").value)||99;cfg.wa=document.getElementById("cwa").value.trim()||cfg.wa;cfg.bank=document.getElementById("cbank").value.trim()||cfg.bank;cfg.rateMin=parseInt(document.getElementById("crmin").value)||30;sCfg(cfg);alert("Configuracion guardada.");}
+function chgPass(){var np=document.getElementById("cpass").value.trim();if(np.length<4){alert("Minimo 4 caracteres");return;}lsSet(K.P,np);document.getElementById("cpass").value="";alert("Contrasena actualizada.");}
+
+// ========== SCHEDULE ==========
 function loadScheduleUI(){
   var cfg=gCfg();
   var sch=cfg.schedule||{enabled:false,open:"10:00",close:"22:00",days:[1,2,3,4,5,6,0]};
-  document.getElementById("sched-enabled").checked=sch.enabled;
-  document.getElementById("sched-open").value=sch.open||"10:00";
-  document.getElementById("sched-close").value=sch.close||"22:00";
-  var days=document.querySelectorAll(".sched-day");
-  for(var i=0;i<days.length;i++)days[i].checked=sch.days.indexOf(parseInt(days[i].value))>-1;
+  var enabledEl=document.getElementById("sched-enabled");
+  var openEl=document.getElementById("sched-open");
+  var closeEl=document.getElementById("sched-close");
+  if(enabledEl)enabledEl.checked=!!sch.enabled;
+  if(openEl)openEl.value=sch.open||"10:00";
+  if(closeEl)closeEl.value=sch.close||"22:00";
+  var days=document.querySelectorAll(".sched-day"),i;
+  for(i=0;i<days.length;i++)days[i].checked=(sch.days||[]).indexOf(parseInt(days[i].value))>-1;
+  renderStoreBtn();
 }
+
+function saveSchedule(){
+  var cfg=gCfg();
+  var days=[];
+  var checks=document.querySelectorAll(".sched-day"),i;
+  for(i=0;i<checks.length;i++)if(checks[i].checked)days.push(parseInt(checks[i].value));
+  cfg.schedule={
+    enabled:document.getElementById("sched-enabled").checked,
+    open:document.getElementById("sched-open").value||"10:00",
+    close:document.getElementById("sched-close").value||"22:00",
+    days:days
+  };
+  sCfg(cfg);
+  alert("Horario guardado correctamente!");
+}
+
+// ========== NOTIFICATIONS ==========
+var lastOrderCount=0;
+var audioCtx=null;
+function playSound(){
+  try{
+    if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+    [523,659,784,1047].forEach(function(freq,idx){
+      var o=audioCtx.createOscillator(),g=audioCtx.createGain();
+      o.connect(g);g.connect(audioCtx.destination);
+      o.frequency.value=freq;o.type="sine";
+      var t=audioCtx.currentTime+idx*0.12;
+      g.gain.setValueAtTime(0.3,t);
+      g.gain.exponentialRampToValueAtTime(0.001,t+0.3);
+      o.start(t);o.stop(t+0.3);
+    });
+  }catch(e){}
+}
+function checkNewOrders(){
+  var orders=gOrders().filter(function(o){return o.status==="pendiente"||o.status==="pendiente_pago";});
+  if(lastOrderCount>0&&orders.length>lastOrderCount){
+    playSound();
+    var badge=document.getElementById("notif-badge");
+    if(badge){badge.style.display="block";setTimeout(function(){badge.style.display="none";},5000);}
+    document.title="&#128241; PEDIDO NUEVO - Admin";
+    setTimeout(function(){document.title="Admin - Arepa Lovers";},8000);
+  }
+  lastOrderCount=orders.length;
+}
+
+document.addEventListener("click",function(e){
+  var btn;
+  btn=e.target.closest("[data-link]");if(btn){window.open(btn.getAttribute("data-link"),"_blank");return;}
+  btn=e.target.closest("[data-geo-id]");if(btn){genGeoLink(btn.getAttribute("data-geo-id"),btn.getAttribute("data-geo-fk"));return;}
+  btn=e.target.closest("[data-upd-id]");if(btn){updOrd(btn.getAttribute("data-upd-id"),btn.getAttribute("data-upd-fk"),btn.getAttribute("data-upd-st"));return;}
+  btn=e.target.closest("[data-togcp]");if(btn){togCp(btn.getAttribute("data-togcp"));return;}
+  btn=e.target.closest("[data-comanda]");if(btn){openComanda(btn.getAttribute("data-comanda"));return;}
+  btn=e.target.closest("[data-toggle-rev]");if(btn){toggleRev(btn.getAttribute("data-toggle-rev"));return;}
+  btn=e.target.closest("[data-del-rev]");if(btn){deleteRev(btn.getAttribute("data-del-rev"));return;}
+  btn=e.target.closest("[data-move-id]");if(btn){moveProduct(btn.getAttribute("data-move-id"),btn.getAttribute("data-move-dir"));return;}
+  btn=e.target.closest("[data-prod-id]");if(btn){openProd(btn.getAttribute("data-prod-id"),btn.getAttribute("data-prod-type")||"regular");return;}
+  btn=e.target.closest("[data-del-prod]");if(btn){delProd(btn.getAttribute("data-del-prod"));return;}
+  btn=e.target.closest("[data-rm-cd]");if(btn){removeCD(parseInt(btn.getAttribute("data-rm-cd")));return;}
+});
+try{if(sessionStorage.getItem("ala")==="1")loadAdm();}catch(e){if(_store["ala"]==="1")loadAdm();}
+initFirebase();
 
 </script>
 </body>
