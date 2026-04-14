@@ -214,12 +214,12 @@ html,body{height:100%;background:var(--bg);font-family:var(--f);color:var(--text
   <div class="abody">
     <div class="apane on" id="ap-pedidos">
     <div class="dash-grid">
-      <div class="dash-card" style="background:#1A0E08;grid-column:span 3;cursor:pointer" onclick="fOrd('preparando',this)"><div class="dc-num" id="dash-proceso">0</div><div class="dc-lbl">Ordenes en proceso</div></div>
-      <div class="dash-card" style="background:#6B7280;cursor:pointer" onclick="fOrd('entregado',this)"><div class="dc-ico">&#9989;</div><div class="dc-num" id="dash-completadas">0</div><div class="dc-lbl">Completadas</div></div>
-      <div class="dash-card" style="background:#374151;cursor:pointer" onclick="fOrd('rechazado',this)"><div class="dc-ico">&#128274;</div><div class="dc-num" id="dash-cerradas">0</div><div class="dc-lbl">Cerradas</div></div>
-      <div class="dash-card" style="background:#374151;cursor:pointer" onclick="fOrd('rechazado',this)"><div class="dc-ico">&#10005;</div><div class="dc-num" id="dash-rechazados">0</div><div class="dc-lbl">Rechazados</div></div>
-      <div class="dash-card" style="background:#0D9488;cursor:pointer" onclick="fOrd('pendiente',this)"><div class="dc-ico">&#128276;</div><div class="dc-num" id="dash-pendientes">0</div><div class="dc-lbl">Pendientes</div></div>
-      <div class="dash-card" style="background:#0D9488;grid-column:span 2;cursor:pointer" onclick="fOrd('confirmado',this)"><div class="dc-ico">&#127869;</div><div class="dc-num" id="dash-aceptados">0</div><div class="dc-lbl">Aceptados</div></div>
+      <div class="dash-card" style="background:#B8101E;grid-column:span 3;cursor:pointer" onclick="fOrd('preparando',this)"><div class="dc-num" id="dash-proceso">0</div><div class="dc-lbl">Ordenes en proceso</div></div>
+      <div class="dash-card" style="background:#1A0E08;cursor:pointer" onclick="fOrd('entregado',this)"><div class="dc-ico">&#9989;</div><div class="dc-num" id="dash-completadas">0</div><div class="dc-lbl">Completadas</div></div>
+      <div class="dash-card" style="background:#8C0D17;cursor:pointer" onclick="fOrd('rechazado',this)"><div class="dc-ico">&#128274;</div><div class="dc-num" id="dash-cerradas">0</div><div class="dc-lbl">Cerradas</div></div>
+      <div class="dash-card" style="background:#8C0D17;cursor:pointer" onclick="fOrd('rechazado',this)"><div class="dc-ico">&#10005;</div><div class="dc-num" id="dash-rechazados">0</div><div class="dc-lbl">Rechazados</div></div>
+      <div class="dash-card" style="background:#B8101E;cursor:pointer" onclick="fOrd('pendiente',this)"><div class="dc-ico">&#128276;</div><div class="dc-num" id="dash-pendientes">0</div><div class="dc-lbl">Pendientes</div></div>
+      <div class="dash-card" style="background:#1A0E08;grid-column:span 2;cursor:pointer" onclick="fOrd('confirmado',this)"><div class="dc-ico">&#127869;</div><div class="dc-num" id="dash-aceptados">0</div><div class="dc-lbl">Aceptados</div></div>
     </div>
     <div class="date-filter"><label>Fecha:</label><input type="date" id="date-filter-input" onchange="filterByDate(this.value)"><button onclick="filterByDate('');document.getElementById('date-filter-input').value=''">Limpiar</button></div>
       <div class="ibox">&#128241; Nuevas ordenes llegan a tu WhatsApp automaticamente</div>
@@ -464,8 +464,8 @@ function renderStoreBtn(){
   var isOpen=!status.manualOverride;
   var btn=document.getElementById("store-toggle-btn");
   var bigBtn=document.getElementById("store-btn-big");
-  if(btn){btn.textContent=isOpen?"&#x1F7E2; ABIERTO":"&#x1F534; CERRADO";btn.style.background=isOpen?"var(--green)":"var(--red)";}
-  if(bigBtn){bigBtn.textContent=isOpen?"&#x1F7E2; ABIERTO - Toca para CERRAR":"&#x1F534; CERRADO - Toca para ABRIR";bigBtn.style.background=isOpen?"var(--green)":"var(--red)";bigBtn.setAttribute("onclick","setStoreOpen("+(isOpen?"false":"true")+")");}
+  if(btn){btn.innerHTML=isOpen?"&#x1F7E2; ABIERTO":"&#x1F534; CERRADO";btn.style.background=isOpen?"var(--green)":"var(--red)";}
+  if(bigBtn){bigBtn.innerHTML=isOpen?"&#x1F7E2; ABIERTO - Toca para CERRAR":"&#x1F534; CERRADO - Toca para ABRIR";bigBtn.style.background=isOpen?"var(--green)":"var(--red)";bigBtn.setAttribute("onclick","setStoreOpen("+(isOpen?"false":"true")+")");}
 }
 
 // ========== DASHBOARD ==========
@@ -826,22 +826,41 @@ var lastOrderCount=0;
 var audioCtx=null;
 function playSound(){
   try{
-    if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();
-    [523,659,784,1047].forEach(function(freq,idx){
-      var o=audioCtx.createOscillator(),g=audioCtx.createGain();
-      o.connect(g);g.connect(audioCtx.destination);
-      o.frequency.value=freq;o.type="sine";
-      var t=audioCtx.currentTime+idx*0.12;
-      g.gain.setValueAtTime(0.3,t);
-      g.gain.exponentialRampToValueAtTime(0.001,t+0.3);
-      o.start(t);o.stop(t+0.3);
-    });
+    if(!audioCtx){audioCtx=new(window.AudioContext||window.webkitAudioContext)();}
+    if(audioCtx.state==="suspended"){audioCtx.resume();}
+    var freqs=[523,659,784,1047];
+    for(var idx=0;idx<freqs.length;idx++){
+      (function(freq,t){
+        try{
+          var o=audioCtx.createOscillator(),g=audioCtx.createGain();
+          o.connect(g);g.connect(audioCtx.destination);
+          o.frequency.value=freq;o.type="sine";
+          g.gain.setValueAtTime(0.4,audioCtx.currentTime+t);
+          g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+t+0.35);
+          o.start(audioCtx.currentTime+t);
+          o.stop(audioCtx.currentTime+t+0.35);
+        }catch(e2){}
+      })(freqs[idx],idx*0.15);
+    }
   }catch(e){}
 }
+
+// Unlock AudioContext on first user interaction
+function unlockAudio(){
+  try{
+    if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+    if(audioCtx.state==="suspended")audioCtx.resume();
+  }catch(e){}
+  document.removeEventListener("click",unlockAudio);
+  document.removeEventListener("touchstart",unlockAudio);
+}
+document.addEventListener("click",unlockAudio);
+document.addEventListener("touchstart",unlockAudio);
 function checkNewOrders(){
   var orders=gOrders().filter(function(o){return o.status==="pendiente"||o.status==="pendiente_pago";});
   if(lastOrderCount>0&&orders.length>lastOrderCount){
-    playSound();
+    try{playSound();}catch(e){}
+    try{if(window.Notification&&Notification.permission==="granted"){new Notification("Arepa Lovers - Pedido nuevo!");}}catch(e){}
     var badge=document.getElementById("notif-badge");
     if(badge){badge.style.display="block";setTimeout(function(){badge.style.display="none";},5000);}
     document.title="&#128241; PEDIDO NUEVO - Admin";
